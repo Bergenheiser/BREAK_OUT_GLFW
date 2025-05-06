@@ -241,10 +241,6 @@ breakout-game/
 2. Verify you're using the recommended versions of all tools
 3. Check that your graphics drivers are up to date
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Acknowledgments
 
 - GLFW: https://www.glfw.org/
