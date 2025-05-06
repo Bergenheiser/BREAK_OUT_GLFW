@@ -9,6 +9,8 @@
 #include <string>
 
 // --- Dear ImGui Headers ---
+#include <algorithm>
+
 #include "imgui/imgui.h"                       // Main ImGui header
 #include "imgui/backends/imgui_impl_glfw.h"    // GLFW backend
 #include "imgui/backends/imgui_impl_opengl2.h" // OpenGL 2 backend

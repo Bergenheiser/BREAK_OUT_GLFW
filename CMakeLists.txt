@@ -5,6 +5,16 @@ project(BreakOut VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Configuration de GLFW comme sous-module
+# Désactiver les composants de GLFW que nous n'utilisons pas
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "GLFW documentation" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "GLFW tests" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "GLFW examples" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "Generate GLFW installation target" FORCE)
+
+# Ajouter le sous-module GLFW au projet
+add_subdirectory(external/glfw)
+
 # Add executable
 add_executable(BreakOut breakout.cpp
         imgui/imgui.cpp
@@ -21,51 +31,65 @@ target_include_directories(BreakOut PRIVATE
         imgui/backends
         ${CMAKE_SOURCE_DIR}/imgui
         ${CMAKE_SOURCE_DIR}/imgui/backends
+        ${CMAKE_SOURCE_DIR}/external/glfw/include  # Inclure les headers de GLFW
 )
 
-# Link GLFW and OpenGL libraries
+# Options spécifiques à la plateforme
 if(APPLE)
-    target_link_libraries(BreakOut PRIVATE glfw "-framework OpenGL" "-framework Cocoa" "-framework IOKit" "-framework CoreVideo")
+    find_library(COCOA_LIBRARY Cocoa)
+    find_library(IOKIT_LIBRARY IOKit)
+    find_library(COREVIDEO_LIBRARY CoreVideo)
+    target_link_libraries(BreakOut PRIVATE
+            glfw
+            "-framework OpenGL"
+            ${COCOA_LIBRARY}
+            ${IOKIT_LIBRARY}
+            ${COREVIDEO_LIBRARY}
+    )
+    target_compile_definitions(BreakOut PRIVATE GL_SILENCE_DEPRECATION)
 elseif(WIN32)
-    # Windows-specific configuration
     find_package(OpenGL REQUIRED)
-    target_link_libraries(BreakOut PRIVATE glfw OpenGL::GL)
 
-    # Ajout des bibliothèques système Windows si nécessaire
-    target_link_libraries(BreakOut PRIVATE gdi32 user32 shell32)
+    # Lier avec la cible glfw déjà configurée par le sous-module
+    target_link_libraries(BreakOut PRIVATE
+            glfw
+            OpenGL::GL
+    )
 
-    # Configuration pour empêcher la création d'une console
-    if(MSVC)
-        set_target_properties(BreakOut PROPERTIES WIN32_EXECUTABLE TRUE)
+    # Ajouter les bibliothèques système Windows
+    if(MINGW)
+        target_link_libraries(BreakOut PRIVATE gdi32 user32 shell32)
+
+        # Optimisations pour MinGW en mode Release
+        if(CMAKE_BUILD_TYPE STREQUAL "Release")
+            # Linking statique des bibliothèques standard
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+            # Utiliser le sous-système Windows pour GUI (pas de console)
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -mwindows")
+        endif()
+    else()
+        target_link_libraries(BreakOut PRIVATE gdi32 user32 shell32)
+
+        # Configuration pour Visual Studio
+        if(MSVC)
+            set_target_properties(BreakOut PROPERTIES WIN32_EXECUTABLE TRUE)
+        endif()
     endif()
 elseif(UNIX AND NOT APPLE)
     find_package(OpenGL REQUIRED)
-    target_link_libraries(BreakOut PRIVATE glfw OpenGL::GL X11 pthread dl)
+    find_package(X11 REQUIRED)
+    find_package(Threads REQUIRED)
+
+    target_link_libraries(BreakOut PRIVATE
+            glfw
+            OpenGL::GL
+            ${X11_LIBRARIES}
+            ${CMAKE_THREAD_LIBS_INIT}
+            ${CMAKE_DL_LIBS}
+    )
 endif()
 
-# Add compile options
-if(APPLE)
-    target_compile_definitions(BreakOut PRIVATE GL_SILENCE_DEPRECATION)
-endif()
-
-# Find and link GLFW
-find_package(glfw3 REQUIRED)
-target_link_libraries(BreakOut PRIVATE glfw)
-
-# Instructions pour Windows si glfw3 n'est pas trouvé par find_package
-if(WIN32 AND NOT glfw3_FOUND)
-    message(STATUS "GLFW3 not found via find_package, checking for manual paths")
-    # Permettre à l'utilisateur de spécifier le chemin vers GLFW3 manuellement
-    set(GLFW3_ROOT_DIR "" CACHE PATH "Root directory of GLFW3 installation")
-
-    if(GLFW3_ROOT_DIR)
-        target_include_directories(BreakOut PRIVATE ${GLFW3_ROOT_DIR}/include)
-        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-            # 64-bit
-            target_link_directories(BreakOut PRIVATE ${GLFW3_ROOT_DIR}/lib-vc2019-64)
-        else()
-            # 32-bit
-            target_link_directories(BreakOut PRIVATE ${GLFW3_ROOT_DIR}/lib-vc2019-32)
-        endif()
-    endif()
-endif()
+# Définir le répertoire de sortie
+set_target_properties(BreakOut PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
