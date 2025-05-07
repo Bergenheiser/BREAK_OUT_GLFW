@@ -1,6 +1,6 @@
 # BreakOut Game
 
-A simple Breakout clone built with C++, GLFW, and ImGui.
+A simple Breakout clone built using C++ with GLFW (for OpenGL), and ImGui.
 
 ## Dependencies
 
@@ -244,6 +244,7 @@ breakout-game/
 ## Acknowledgments
 
 - GLFW: https://www.glfw.org/
+- OpenGL: https://www.opengl.org/
 - ImGui: https://github.com/ocornut/imgui
 
 # Authors Note
@@ -299,4 +300,4 @@ breakout-game/
 - **Mise à l'échelle** des vitesses en fonction des dimensions du monde
 
 ## TODO
-- [ ] Editeur de niveaux
+- [ ] Éditeur de niveaux.
