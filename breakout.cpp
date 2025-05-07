@@ -27,6 +27,7 @@
 // Constants
 //-----------------------------------------------------------------------------
 constexpr int WINDOW_WIDTH = 960;
+
 constexpr int WINDOW_HEIGHT = 540;
 const char* WINDOW_TITLE = "Breakout C++";
 
@@ -149,6 +150,10 @@ struct GameObject
 //-----------------------------------------------------------------------------
 struct Paddle : public GameObject
 {
+    bool firstContactRed = true;
+    bool firstContactOrange = true;
+    float speed = PADDLE_SPEED;
+    bool isShrunk = false;
 };
 
 struct Ball : public GameObject
@@ -309,10 +314,6 @@ private:
     float bonusFallSpeed = 1.0f; // Vitesse pour tomber en 2 secondes
     // --- Timing ---
     double lastTime = 0.0;
-    //--- Game Logic ---
-    bool firstContactRed{};
-    bool firstContactOrange{};
-    bool paddleShrunk{};
 
     // --- Initialization Functions ---
     bool initGLFW(const int& width, const int& height, const char* title)
@@ -355,9 +356,6 @@ private:
         score = 0;
         lives = 3;
         currentLevel = 1;
-        firstContactRed = true;
-        firstContactOrange = true;
-        paddleShrunk = false;
         // currentState is set to PLAYING *before* calling this
         initBlocks();
         resetPlayerAndBall();
@@ -601,7 +599,7 @@ private:
     // Reset paddle and ball to starting positions
     void resetPlayerAndBall()
     {
-        paddleShrunk
+        playerPaddle.isShrunk
             ? playerPaddle.size = Vec2{PADDLE_WIDTH * 0.5, PADDLE_HEIGHT}
             : playerPaddle.size = Vec2{PADDLE_WIDTH, PADDLE_HEIGHT};
         playerPaddle.position = Vec2{0.0f - PADDLE_WIDTH / 2.0f, PADDLE_Y_POSITION};
@@ -752,8 +750,8 @@ private:
                 if (lives > 0) // S'il reste des vies, passer au niveau suivant
                 {
                     currentLevel++;
-                    firstContactOrange = true;
-                    firstContactRed = true;
+                    playerPaddle.firstContactOrange=true;
+                    playerPaddle.firstContactRed=true;
                     gameBall.hitCount = 0;
                     initBlocks(); // Générer un nouveau niveau de briques
                     resetPlayerAndBall(); // Réinitialiser la position de la balle et de la raquette
@@ -980,9 +978,9 @@ private:
         if (gameBall.position.y + gameBall.size.y >= gameBoundY)
         {
             //Collision avec le plafond
-            if (!paddleShrunk)
+            if (!playerPaddle.isShrunk)
             {
-                paddleShrunk = true;
+                playerPaddle.isShrunk = true;
                 playerPaddle.size.x *= 0.5f;
             }
             gameBall.velocity.y = -std::abs(gameBall.velocity.y);
@@ -1135,17 +1133,17 @@ private:
             speedIncreased = true;
         }
 
-        if (firstContactRed && b.color.r == 1.0f && b.color.g == 0.6f && b.color.b == 0.2f)
+        if (playerPaddle.firstContactRed  && b.colorType==BrickColor::RED)
         {
             gameBall.speedMagnitude *= BALL_SPEED_INCREMENT;
-            firstContactRed = false;
+            playerPaddle.firstContactRed = false;
             speedIncreased = true;
         }
 
-        if (firstContactOrange && b.color.r == 1.0f && b.color.g == 0.2f && b.color.b == 0.2f)
+        if (playerPaddle.firstContactOrange && BrickColor::ORANGE == b.colorType)
         {
             gameBall.speedMagnitude *= BALL_SPEED_INCREMENT;
-            firstContactOrange = false;
+            playerPaddle.firstContactOrange = false;
             speedIncreased = true;
         }
         if (speedIncreased)
@@ -1233,7 +1231,7 @@ private:
 
             if (currentSpeed > 0.0001f)
             {
-                // Maintenir la direction mais ajuster la magnitude
+                // Maintenir la direction, mais ajuster la magnitude
                 gameBall.velocity.x *= speedScaleFactor;
                 gameBall.velocity.y *= speedScaleFactor;
 
