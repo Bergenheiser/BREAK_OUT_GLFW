@@ -245,3 +245,58 @@ breakout-game/
 
 - GLFW: https://www.glfw.org/
 - ImGui: https://github.com/ocornut/imgui
+
+# Authors Note
+## Mécaniques de jeu
+
+### Contrôle et physique
+- **Mouvement de la raquette par souris** avec déplacement progressif :
+    - La position de la souris est convertie en coordonnées du monde de jeu
+    - Mouvement lissé avec delta time (`dt`) pour un déplacement fluide et cohérent
+    - Vitesse de la raquette liée à celle de la balle pour maintenir un équilibre de difficulté
+
+### Système de la balle
+- **Vitesse de base** : `INITIAL_BALL_SPEED = 1.0f`
+- **Système d'accélération progressive** :
+    - Augmentation par compteur de coups : après 4 et 12 coups
+    - Accélération lors du premier contact avec les briques rouges et orange
+    - Facteur d'accélération unifié : `BALL_SPEED_INCREMENT = 1.19f` (+19%)
+    - Normalisation de la vitesse après chaque accélération pour maintenir un vecteur directionnel cohérent
+
+### Architecture des briques
+- **Distribution organisée** en 8 rangées de 14 briques
+- **Système de points** dégressif selon la hauteur :
+    - Rouge (haut) : 7 points
+    - Orange : 5 points
+    - Vert : 3 points
+    - Jaune (bas) : 1 point
+
+### Briques spéciales
+- **Murs indestructibles** aux extrémités supérieures (gris)
+- **Murs à rétroréflexion** (blancs) qui inversent la direction complète de la balle
+- **Briques à compteur** (une par rangée, position aléatoire mais fixe) nécessitant 2 coups pour être détruites.
+
+### Système de bonus/malus
+- **Distribution** : un bloc bonus par rangée à position aléatoire
+- **Types de bonus** (8 variantes) :
+    - Vie supplémentaire (orange)
+    - Retrait d'une vie (rouge)
+    - Élargissement de la raquette (+25%)
+    - Rétrécissement de la raquette (-25%)
+    - Ralentissement de la balle (-20%)
+    - Accélération de la balle (+20%)
+    - Redressement de trajectoire (composante horizontale réduite)
+    - Inclinaison de la trajectoire (composante horizontale augmentée)
+- **Mécanique de chute** : les bonus tombent à une vitesse constante (traverse l'écran en 2 secondes)
+
+### Événements spéciaux
+- **Rétrécissement de la raquette** lors du premier contact avec le plafond
+- **Augmentation incrémentale** de la difficulté par niveau
+- **Rebond optimisé** sur la raquette : l'angle dépend de la position d'impact
+
+### Adaptation à la résolution
+- **Système d'adaptation dynamique** du jeu à la taille de la fenêtre
+- **Mise à l'échelle** des vitesses en fonction des dimensions du monde
+
+## TODO
+- [ ] Editeur de niveaux
