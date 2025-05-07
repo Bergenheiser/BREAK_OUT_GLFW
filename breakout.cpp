@@ -7,15 +7,13 @@
 #include <ctime>
 #include <stdexcept>
 #include <string>
-
-// --- Dear ImGui Headers ---
 #include <algorithm>
-
+// --- Dear ImGui Headers ---
 #include "imgui/imgui.h"                       // Main ImGui header
 #include "imgui/backends/imgui_impl_glfw.h"    // GLFW backend
 #include "imgui/backends/imgui_impl_opengl2.h" // OpenGL 2 backend
 
-// === Compilation Commands === (Si la compilation CMAKE est impossible)
+// === Compilation manuelle === (Si la compilation CMAKE est impossible)
 // MACOSX:
 // g++ -std=c++11 breakout.cpp imgui/imgui.cpp imgui/imgui_draw.cpp imgui/imgui_tables.cpp imgui/imgui_widgets.cpp imgui/backends/imgui_impl_glfw.cpp imgui/backends/imgui_impl_opengl2.cpp -o breakout -lglfw -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
 //
@@ -29,9 +27,8 @@
 constexpr int WINDOW_WIDTH = 960;
 
 constexpr int WINDOW_HEIGHT = 540;
-const char* WINDOW_TITLE = "Breakout C++";
+const char *WINDOW_TITLE = "Breakout C++";
 
-// --- Game Constants ---
 constexpr int BRICK_ROWS = 8;
 constexpr int BRICKS_PER_ROW = 14;
 constexpr float BRICK_GRID_WIDTH = 1.85f; // Slightly reduce grid width for margins
@@ -53,24 +50,20 @@ constexpr float REFERENCE_HEIGHT = 540.0f;
 constexpr float BASE_SPEED = 1.0f;
 
 //-----------------------------------------------------------------------------
-// Helper Structs
+// Structures utilitaires
 //-----------------------------------------------------------------------------
-struct Vec2
-{
+struct Vec2 {
     Vec2() = default;
 
-    Vec2(float x_val, float y_val) : x(x_val), y(y_val)
-    {
+    Vec2(float x_val, float y_val) : x(x_val), y(y_val) {
     };
     float x = 0.0f;
     float y = 0.0f;
 };
 
-struct Color
-{
+struct Color {
     explicit Color(float r_val = 1.0f, float g_val = 1.0f, float b_val = 1.0f, float a_val = 1.0f)
-        : r(r_val), g(g_val), b(b_val), a(a_val)
-    {
+        : r(r_val), g(g_val), b(b_val), a(a_val) {
     }
 
     float r = 1.0f;
@@ -80,8 +73,7 @@ struct Color
 };
 
 // --- Définition des couleurs du jeu ---
-enum class BrickColor
-{
+enum class BrickColor {
     RED, // Rouge - lignes 0-1
     ORANGE, // Orange - lignes 2-3
     GREEN, // Vert - lignes 4-5
@@ -92,42 +84,38 @@ enum class BrickColor
     BALL // Couleur de la balle
 };
 
-// Fonction qui retourne une structure Color à partir d'une énumération BrickColor
-Color getColorFromEnum(BrickColor colorType, bool isDarker = false, float alpha = 1.0f)
-{
+Color getColorFromEnum(BrickColor colorType, bool isDarker = false, float alpha = 1.0f) {
     Color result;
 
-    switch (colorType)
-    {
-    case BrickColor::RED:
-        result = Color{1.0f, 0.2f, 0.2f, alpha};
-        break;
-    case BrickColor::ORANGE:
-        result = Color{1.0f, 0.6f, 0.2f, alpha};
-        break;
-    case BrickColor::GREEN:
-        result = Color{0.2f, 1.0f, 0.2f, alpha};
-        break;
-    case BrickColor::YELLOW:
-        result = Color{1.0f, 1.0f, 0.2f, alpha};
-        break;
-    case BrickColor::GRAY:
-        result = Color{0.5f, 0.5f, 0.5f, alpha};
-        break;
-    case BrickColor::WHITE:
-        result = Color{1.0f, 1.0f, 1.0f, alpha};
-        break;
-    case BrickColor::PADDLE:
-        result = Color{0.8f, 0.8f, 0.8f, alpha};
-        break;
-    case BrickColor::BALL:
-        result = Color{1.0f, 1.0f, 1.0f, alpha};
-        break;
+    switch (colorType) {
+        case BrickColor::RED:
+            result = Color{1.0f, 0.2f, 0.2f, alpha};
+            break;
+        case BrickColor::ORANGE:
+            result = Color{1.0f, 0.6f, 0.2f, alpha};
+            break;
+        case BrickColor::GREEN:
+            result = Color{0.2f, 1.0f, 0.2f, alpha};
+            break;
+        case BrickColor::YELLOW:
+            result = Color{1.0f, 1.0f, 0.2f, alpha};
+            break;
+        case BrickColor::GRAY:
+            result = Color{0.5f, 0.5f, 0.5f, alpha};
+            break;
+        case BrickColor::WHITE:
+            result = Color{1.0f, 1.0f, 1.0f, alpha};
+            break;
+        case BrickColor::PADDLE:
+            result = Color{0.8f, 0.8f, 0.8f, alpha};
+            break;
+        case BrickColor::BALL:
+            result = Color{1.0f, 1.0f, 1.0f, alpha};
+            break;
     }
 
     // Appliquer l'effet "plus sombre" si demandé (pour les briques à compteur)
-    if (isDarker)
-    {
+    if (isDarker) {
         result.r *= 0.7f;
         result.g *= 0.7f;
         result.b *= 0.7f;
@@ -136,36 +124,32 @@ Color getColorFromEnum(BrickColor colorType, bool isDarker = false, float alpha 
     return result;
 }
 
-// Base structure for game objects with position and size
-struct GameObject
-{
+//-----------------------------------------------------------------------------
+// Game Object Structs
+//-----------------------------------------------------------------------------
+
+struct GameObject {
     Vec2 position;
     Vec2 size;
     Color color;
     BrickColor colorType;
 };
 
-//-----------------------------------------------------------------------------
-// Game Object Structs
-//-----------------------------------------------------------------------------
-struct Paddle : public GameObject
-{
+struct Paddle : public GameObject {
     bool firstContactRed = true;
     bool firstContactOrange = true;
     float speed = PADDLE_SPEED;
     bool isShrunk = false;
 };
 
-struct Ball : public GameObject
-{
+struct Ball : public GameObject {
     Vec2 velocity = Vec2{0.0f, 0.0f};
     float speedMagnitude = INITIAL_BALL_SPEED;
     bool stuckToPaddle = true;
     int hitCount = 0;
 };
 
-struct Block : public GameObject
-{
+struct Block : public GameObject {
     bool active = true;
     int points = 0;
     int hitCounter = 0; // Compteur de coups nécessaires pour détruire la brique
@@ -174,20 +158,17 @@ struct Block : public GameObject
     bool isBonus = false; // Pour les briques bonus
     int bonusType = 0; // Type de bonus
 };
-
 //-----------------------------------------------------------------------------
 // Game State Enum
 //-----------------------------------------------------------------------------
-enum class GameState
-{
+enum class GameState {
     MENU,
     PLAYING,
     GAME_OVER
 };
 
 // Constantes pour les types de bonus
-enum BonusType
-{
+enum BonusType {
     LIFE_ADD = 0,
     LIFE_REMOVE = 1,
     PADDLE_WIDEN = 2,
@@ -199,8 +180,7 @@ enum BonusType
 };
 
 // Structure pour un bonus qui tombe
-struct FallingBonus
-{
+struct FallingBonus {
     Vec2 position;
     Vec2 size;
     Color color;
@@ -213,25 +193,21 @@ struct FallingBonus
 //-----------------------------------------------------------------------------
 // Game Class
 //-----------------------------------------------------------------------------
-class Game
-{
+class Game {
 public:
-    Game(int width, int height, const char* title)
+    Game(int width, int height, const char *title)
         : windowWidth(width), windowHeight(height) // game objects use default constructors
     {
-        if (!initGLFW(width, height, title))
-        {
+        if (!initGLFW(width, height, title)) {
             throw std::runtime_error("Failed to initialize GLFW or create window");
         }
 
         // --- Initialize Dear ImGui ---
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        (void)io;
-        // Optional: Enable keyboard nav if desired
-        // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        ImGui::StyleColorsDark(); // Set default dark style
+        ImGuiIO &io = ImGui::GetIO();
+        (void) io;
+        ImGui::StyleColorsDark();
 
         // Initialize ImGui Backends
         ImGui_ImplGlfw_InitForOpenGL(window, true); // Installs callbacks
@@ -243,37 +219,32 @@ public:
         setupCallbacks(); // Setup non-ImGui callbacks (only framebuffer size needed now)
         updateProjectionMatrix(width, height); // Initial projection setup
 
-        // Start in the menu state
         currentState = GameState::MENU;
     }
 
-    ~Game()
-    {
-        // --- Shutdown ImGui ---
+    ~Game() {
+        // --- ImGui ---
         ImGui_ImplOpenGL2_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
 
-        // --- Shutdown GLFW ---
-        if (window)
-        {
+        // --- GLFW ---
+        if (window) {
             glfwDestroyWindow(window);
         }
         glfwTerminate();
     }
 
-    // Main game loop runner
-    void run()
-    {
+    // Boucle principale
+    void run() {
         lastTime = glfwGetTime();
-        while (!glfwWindowShouldClose(window))
-        {
+        while (!glfwWindowShouldClose(window)) {
             // --- Timing ---
             double currentTime = glfwGetTime();
             auto deltaTime = static_cast<float>(currentTime - lastTime);
             lastTime = currentTime;
 
-            // --- Start ImGui Frame ---
+            // --- ImGui Frame ---
             ImGui_ImplOpenGL2_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
@@ -292,7 +263,7 @@ public:
 
 private:
     // --- Window & Graphics ---
-    GLFWwindow* window = nullptr;
+    GLFWwindow *window = nullptr;
     int windowWidth;
     int windowHeight;
     float gameBoundX = 1.0f; // World coordinate boundaries (-1.0f to 1.0f)
@@ -316,10 +287,8 @@ private:
     double lastTime = 0.0;
 
     // --- Initialization Functions ---
-    bool initGLFW(const int& width, const int& height, const char* title)
-    {
-        if (!glfwInit())
-        {
+    bool initGLFW(const int &width, const int &height, const char *title) {
+        if (!glfwInit()) {
             std::cerr << "Failed to initialize GLFW" << std::endl;
             return false;
         }
@@ -329,8 +298,7 @@ private:
 
         window = glfwCreateWindow(width, height, title, NULL, NULL);
         updateProjectionMatrix(width, height);
-        if (!window)
-        {
+        if (!window) {
             std::cerr << "Failed to create GLFW window" << std::endl;
             glfwTerminate();
             return false;
@@ -341,8 +309,7 @@ private:
     }
 
     // Setup GLFW callbacks NOT handled by ImGui
-    void setupCallbacks() const
-    {
+    void setupCallbacks() const {
         // ImGui_ImplGlfw_InitForOpenGL installs its own handlers for most inputs.
         // We only need to keep the framebuffer size callback.
 
@@ -351,8 +318,7 @@ private:
         // glfwSetKeyCallback(window, keyCallback); // Can be removed if only polling keys
     }
 
-    void initGame()
-    {
+    void initGame() {
         score = 0;
         lives = 3;
         currentLevel = 1;
@@ -361,8 +327,7 @@ private:
         resetPlayerAndBall();
     }
 
-    void spawnBonus(const Block& block)
-    {
+    void spawnBonus(const Block &block) {
         FallingBonus bonus;
         bonus.position = block.position;
         bonus.size = Vec2{gameBall.size.x, gameBall.size.y}; // Plus petit que la brique
@@ -370,93 +335,91 @@ private:
         bonus.fallSpeed = bonusFallSpeed;
         bonus.active = true;
 
-        switch (bonus.type)
-        {
-        case LIFE_ADD: bonus.color = Color{1.0f, 0.5f, 0.0f, 1.0f};
-            break; // Orange
-        case LIFE_REMOVE: bonus.color = Color{1.0f, 0.0f, 0.0f, 1.0f};
-            break; // Rouge
-        case PADDLE_WIDEN: bonus.color = Color{1.0f, 1.0f, 0.0f, 1.0f};
-            break; // Jaune
-        case PADDLE_SHRINK: bonus.color = Color{0.0f, 1.0f, 0.0f, 1.0f};
-            break; // Vert
-        case BALL_SLOW: bonus.color = Color{0.0f, 1.0f, 1.0f, 1.0f};
-            break; // Cyan
-        case BALL_FAST: bonus.color = Color{0.0f, 0.0f, 1.0f, 1.0f};
-            break; // Bleu
-        case BALL_STRAIGHTEN: bonus.color = Color{1.0f, 1.0f, 1.0f, 1.0f};
-            break; // Blanc
-        case BALL_ANGLE: bonus.color = Color{0.5f, 0.5f, 0.5f, 1.0f};
-            break; // Gris
-        default: bonus.color = Color{1.0f, 1.0f, 1.0f, 1.0f}; // Blanc par défaut
+        switch (bonus.type) {
+            case LIFE_ADD: bonus.color = Color{1.0f, 0.5f, 0.0f, 1.0f};
+                break; // Orange
+            case LIFE_REMOVE: bonus.color = Color{1.0f, 0.0f, 0.0f, 1.0f};
+                break; // Rouge
+            case PADDLE_WIDEN: bonus.color = Color{1.0f, 1.0f, 0.0f, 1.0f};
+                break; // Jaune
+            case PADDLE_SHRINK: bonus.color = Color{0.0f, 1.0f, 0.0f, 1.0f};
+                break; // Vert
+            case BALL_SLOW: bonus.color = Color{0.0f, 1.0f, 1.0f, 1.0f};
+                break; // Cyan
+            case BALL_FAST: bonus.color = Color{0.0f, 0.0f, 1.0f, 1.0f};
+                break; // Bleu
+            case BALL_STRAIGHTEN: bonus.color = Color{1.0f, 1.0f, 1.0f, 1.0f};
+                break; // Blanc
+            case BALL_ANGLE: bonus.color = Color{0.5f, 0.5f, 0.5f, 1.0f};
+                break; // Gris
+            default: bonus.color = Color{1.0f, 1.0f, 1.0f, 1.0f}; // Blanc par défaut
         }
 
         fallingBonuses.push_back(bonus);
     }
 
-    void applyBonus(const FallingBonus& bonus)
-    {
-        switch (bonus.type)
-        {
-        case LIFE_ADD:
-            lives = std::min(lives + 1, 5); // Maximum 5 vies
-            break;
-        case LIFE_REMOVE:
-            lives = std::max(lives - 1, 1); // Minimum 1 vie
-            break;
-        case PADDLE_WIDEN:
-            playerPaddle.size.x *= 1.25f; // 25% plus large
-            playerPaddle.size.x = std::min(playerPaddle.size.x, gameBoundX * 0.75f); // Limiter la taille
-            break;
-        case PADDLE_SHRINK:
-            playerPaddle.size.x *= 0.75f; // 25% plus petit
-            playerPaddle.size.x = std::max(playerPaddle.size.x, PADDLE_WIDTH * 0.5f); // Taille minimale
-            break;
-        case BALL_SLOW:
-            gameBall.speedMagnitude *= 0.8f; // 20% plus lente
-            normalizeVelocity();
-            break;
-        case BALL_FAST:
-            gameBall.speedMagnitude *= 1.2f; // 20% plus rapide
-            normalizeVelocity();
-            break;
-        case BALL_STRAIGHTEN:
-            // Redresser la trajectoire
-            if (std::abs(gameBall.velocity.x) > 0.1f)
-            {
-                float sign = gameBall.velocity.x > 0 ? 1.0f : -1.0f;
-                gameBall.velocity.x = sign * gameBall.speedMagnitude * 0.2f; // Réduit la composante horizontale
-                gameBall.velocity.y = gameBall.velocity.y > 0
-                                          ? std::sqrt(
-                                              gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.x *
-                                              gameBall.velocity.x)
-                                          : -std::sqrt(
-                                              gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.x *
-                                              gameBall.velocity.x);
-            }
-            break;
-        case BALL_ANGLE:
-            // Incliner davantage la trajectoire
-            if (std::abs(gameBall.velocity.y) > 0.1f)
-            {
-                float sign = gameBall.velocity.x > 0 ? 1.0f : -1.0f;
-                gameBall.velocity.x = sign * gameBall.speedMagnitude * 0.8f;
-                // Augmente la composante horizontale (80% de la vitesse normalisée est horizontale
-                gameBall.velocity.y = gameBall.velocity.y > 0
-                                          ? std::sqrt(
-                                              gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.x *
-                                              gameBall.velocity.x)
-                                          : -std::sqrt(
-                                              gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.x *
-                                              gameBall.velocity.x);
-            }
-            break;
-        default: break;
+    void applyBonus(const FallingBonus &bonus) {
+        switch (bonus.type) {
+            case LIFE_ADD:
+                lives = std::min(lives + 1, 5); // Maximum 5 vies
+                break;
+            case LIFE_REMOVE:
+                lives = std::max(lives - 1, 1); // Minimum 1 vie
+                break;
+            case PADDLE_WIDEN:
+                playerPaddle.size.x *= 1.25f; // 25% plus large
+                playerPaddle.size.x = std::min(playerPaddle.size.x, gameBoundX * 0.75f); // Limiter la taille
+                break;
+            case PADDLE_SHRINK:
+                playerPaddle.size.x *= 0.75f; // 25% plus petit
+                playerPaddle.size.x = std::max(playerPaddle.size.x, PADDLE_WIDTH * 0.5f); // Taille minimale
+                break;
+            case BALL_SLOW:
+                gameBall.speedMagnitude *= 0.8f; // 20% plus lente
+                normalizeVelocity();
+                break;
+            case BALL_FAST:
+                gameBall.speedMagnitude *= 1.2f; // 20% plus rapide
+                normalizeVelocity();
+                break;
+            case BALL_STRAIGHTEN:
+                // Redresser la trajectoire
+                if (std::abs(gameBall.velocity.x) > 0.1f) {
+                    float sign = gameBall.velocity.x > 0 ? 1.0f : -1.0f;
+                    gameBall.velocity.x = sign * gameBall.speedMagnitude * 0.2f; // Réduit la composante horizontale
+                    gameBall.velocity.y = gameBall.velocity.y > 0
+                                              ? std::sqrt(
+                                                  gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.
+                                                  x *
+                                                  gameBall.velocity.x)
+                                              : -std::sqrt(
+                                                  gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.
+                                                  x *
+                                                  gameBall.velocity.x);
+                }
+                break;
+            case BALL_ANGLE:
+                // Incliner davantage la trajectoire
+                if (std::abs(gameBall.velocity.y) > 0.1f) {
+                    float sign = gameBall.velocity.x > 0 ? 1.0f : -1.0f;
+                    gameBall.velocity.x = sign * gameBall.speedMagnitude * 0.8f;
+                    // Augmente la composante horizontale (80% de la vitesse normalisée est horizontale
+                    gameBall.velocity.y = gameBall.velocity.y > 0
+                                              ? std::sqrt(
+                                                  gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.
+                                                  x *
+                                                  gameBall.velocity.x)
+                                              : -std::sqrt(
+                                                  gameBall.speedMagnitude * gameBall.speedMagnitude - gameBall.velocity.
+                                                  x *
+                                                  gameBall.velocity.x);
+                }
+                break;
+            default: break;
         }
     }
 
-    void initBlocks()
-    {
+    void initBlocks() {
         blocks.clear();
         float totalGridWidth = 2 * gameBoundX;
         float totalGapWidth = (BRICKS_PER_ROW - 1) * BRICK_GAP;
@@ -468,45 +431,33 @@ private:
         int bonusPositions[BRICK_ROWS];
         int counterPositions[BRICK_ROWS];
 
-        for (int i = 0; i < BRICK_ROWS; i++)
-        {
+        for (int i = 0; i < BRICK_ROWS; i++) {
             bonusPositions[i] = 1 + std::rand() % (BRICKS_PER_ROW - 2);
-            do
-            {
+            do {
                 counterPositions[i] = 1 + std::rand() % (BRICKS_PER_ROW - 2);
-            }
-            while (counterPositions[i] == bonusPositions[i]);
+            } while (counterPositions[i] == bonusPositions[i]);
         }
 
-        for (int i = 0; i < BRICK_ROWS; ++i)
-        {
+        for (int i = 0; i < BRICK_ROWS; ++i) {
             // Définir la couleur et les points une seule fois par ligne
             // Pour obtenir la couleur de base selon la ligne
             BrickColor baseColorType;
             int points;
-            if (i < 2)
-            {
+            if (i < 2) {
                 baseColorType = BrickColor::RED;
                 points = 7;
-            }
-            else if (i < 4)
-            {
+            } else if (i < 4) {
                 baseColorType = BrickColor::ORANGE;
                 points = 5;
-            }
-            else if (i < 6)
-            {
+            } else if (i < 6) {
                 baseColorType = BrickColor::GREEN;
                 points = 3;
-            }
-            else
-            {
+            } else {
                 baseColorType = BrickColor::YELLOW;
                 points = 1;
             }
 
-            for (int j = 0; j < BRICKS_PER_ROW; ++j)
-            {
+            for (int j = 0; j < BRICKS_PER_ROW; ++j) {
                 Block block;
                 block.size = Vec2{brickWidth, BRICK_HEIGHT};
                 block.position = Vec2{
@@ -520,32 +471,25 @@ private:
                 block.color = getColorFromEnum(baseColorType);
                 block.colorType = baseColorType;
                 // Cas spéciaux par type de brique
-                if (i == 0 && (j == 0 || j == BRICKS_PER_ROW - 1))
-                {
+                if (i == 0 && (j == 0 || j == BRICKS_PER_ROW - 1)) {
                     // Murs indestructibles
                     block.isWall = true;
                     block.isReflective = false;
                     block.color = getColorFromEnum(BrickColor::GRAY);
                     block.colorType = BrickColor::GRAY;
                     block.hitCounter = -1;
-                }
-                else if (i == 0 && (j == 1 || j == BRICKS_PER_ROW - 2))
-                {
+                } else if (i == 0 && (j == 1 || j == BRICKS_PER_ROW - 2)) {
                     // Murs réfléchissants
                     block.isWall = true;
                     block.isReflective = true;
                     block.color = getColorFromEnum(BrickColor::WHITE);
                     block.colorType = BrickColor::WHITE;
                     block.hitCounter = -1;
-                }
-                else if (j == counterPositions[i])
-                {
+                } else if (j == counterPositions[i]) {
                     // Briques à compteur - version plus sombre de la couleur de base
                     block.hitCounter = 2;
                     block.color = getColorFromEnum(baseColorType, true);
-                }
-                else if (j == bonusPositions[i])
-                {
+                } else if (j == bonusPositions[i]) {
                     // Briques bonus
                     block.isBonus = true;
                     block.bonusType = rand() % 7;
@@ -557,8 +501,7 @@ private:
         std::srand(static_cast<unsigned int>(std::time(nullptr)));
     }
 
-    void updateBlockPositions()
-    {
+    void updateBlockPositions() {
         // Calculer la nouvelle taille des briques basée sur les limites du jeu actuelles
         float totalGridWidth = 2 * gameBoundX;
         float totalGapWidth = (BRICKS_PER_ROW - 1) * BRICK_GAP;
@@ -567,14 +510,11 @@ private:
 
         // Parcourir toutes les briques existantes et ajuster leurs positions et tailles
         int i = 0;
-        for (int row = 0; row < BRICK_ROWS; ++row)
-        {
-            for (int col = 0; col < BRICKS_PER_ROW; ++col)
-            {
-                if (i < blocks.size())
-                {
+        for (int row = 0; row < BRICK_ROWS; ++row) {
+            for (int col = 0; col < BRICKS_PER_ROW; ++col) {
+                if (i < blocks.size()) {
                     // Conserver l'état actif/inactif et autres propriétés
-                    Block& block = blocks[i];
+                    Block &block = blocks[i];
 
                     // Mettre à jour uniquement la position et la taille
                     block.size.x = brickWidth;
@@ -588,17 +528,15 @@ private:
         }
     }
 
-    bool checkBonusPaddleCollision(const FallingBonus& bonus) const
-    {
+    bool checkBonusPaddleCollision(const FallingBonus &bonus) const {
         return bonus.position.x < playerPaddle.position.x + playerPaddle.size.x &&
-            bonus.position.x + bonus.size.x > playerPaddle.position.x &&
-            bonus.position.y < playerPaddle.position.y + playerPaddle.size.y &&
-            bonus.position.y + bonus.size.y > playerPaddle.position.y;
+               bonus.position.x + bonus.size.x > playerPaddle.position.x &&
+               bonus.position.y < playerPaddle.position.y + playerPaddle.size.y &&
+               bonus.position.y + bonus.size.y > playerPaddle.position.y;
     }
 
     // Reset paddle and ball to starting positions
-    void resetPlayerAndBall()
-    {
+    void resetPlayerAndBall() {
         playerPaddle.isShrunk
             ? playerPaddle.size = Vec2{PADDLE_WIDTH * 0.5, PADDLE_HEIGHT}
             : playerPaddle.size = Vec2{PADDLE_WIDTH, PADDLE_HEIGHT};
@@ -618,70 +556,58 @@ private:
     }
 
     // --- Game Loop Functions ---
+    void processInput(const float dt) {
+        if (currentState == GameState::PLAYING) {
+            double mouseX, mouseY;
+            glfwGetCursorPos(window, &mouseX, &mouseY);
+            // Convertir les coordonnées de souris en coordonnées de monde OpenGL
+            double worldMouseX = (2.0f * mouseX / windowWidth - 1.0f) * gameBoundX;
+            float moveSpeed = PADDLE_SPEED*gameBall.speedMagnitude; // Vitesse de déplacement de la raquette
+            float targetX = worldMouseX - playerPaddle.size.x / 2.0f;
+            float currentX = playerPaddle.position.x;
+            float direction = (targetX > currentX) ? 1.0f : -1.0f;
+            float distance = std::abs(targetX - currentX);
 
-    void processInput(float dt)
-    {
-        // Check ImGui IO to see if UI wants mouse/keyboard, if needed for complex interaction
-        // ImGuiIO& io = ImGui::GetIO();
-        // if (io.WantCaptureKeyboard) return; // Example: Skip game input if typing in ImGui window
-
-        // --- Game Input (only when playing) ---
-        if (currentState == GameState::PLAYING)
-        {
-            if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-            {
-                playerPaddle.position.x -= PADDLE_SPEED * dt;
-                playerPaddle.position.x = std::max(playerPaddle.position.x, -gameBoundX); // Clamp left
-            }
-            if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-            {
-                playerPaddle.position.x += PADDLE_SPEED * dt;
-                // Clamp right
-                playerPaddle.position.x = std::min(playerPaddle.position.x, gameBoundX - playerPaddle.size.x);
+            // Déplacement progressif
+            if (distance > 0.001f) {
+                float movement = moveSpeed * dt;
+                movement = std::min(movement, distance);
+                playerPaddle.position.x = std::max(-gameBoundX,std::min(gameBoundX-playerPaddle.size.x,playerPaddle.position.x+direction * movement));
             }
             // Launch Ball
-            if (gameBall.stuckToPaddle && glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-            {
+            if (gameBall.stuckToPaddle && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
                 gameBall.stuckToPaddle = false;
-                const float direction = rand() % 2 * 2 - 1;
-                const float velocityX = direction * gameBall.speedMagnitude;
+                const float ballDirection = rand() % 2 * 2 - 1;
+                const float velocityX = ballDirection * gameBall.speedMagnitude;
                 const float velocityY = gameBall.speedMagnitude;
 
                 gameBall.velocity = Vec2{velocityX, velocityY};
+                normalizeVelocity();
             }
         }
         // --- Game Over Input ---
-        else if (currentState == GameState::GAME_OVER)
-        {
-            if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
-            {
+        else if (currentState == GameState::GAME_OVER) {
+            if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS) {
                 currentState = GameState::MENU; // Return to menu
-                // No need to call initMenu - renderMenu handles drawing
             }
         }
 
         // --- Global Input ---
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        {
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
         }
     }
 
-    void update(float dt)
-    {
+    void update(const float dt) {
         // Only update game logic if playing
-        if (currentState == GameState::PLAYING)
-        {
+        if (currentState == GameState::PLAYING) {
             // --- Update Ball Position ---
-            if (gameBall.stuckToPaddle)
-            {
+            if (gameBall.stuckToPaddle) {
                 gameBall.position = Vec2{
                     playerPaddle.position.x + playerPaddle.size.x / 2.0f - BALL_RADIUS,
                     playerPaddle.position.y + playerPaddle.size.y
                 };
-            }
-            else
-            {
+            } else {
                 gameBall.position.x += gameBall.velocity.x * dt;
                 gameBall.position.y += gameBall.velocity.y * dt;
 
@@ -689,39 +615,31 @@ private:
                 handleCollisions();
 
                 // --- Check Lose Condition ---
-                if (gameBall.position.y + gameBall.size.y < -gameBoundY)
-                {
+                if (gameBall.position.y + gameBall.size.y < -gameBoundY) {
                     // Ball below bottom edge
                     lives--;
-                    if (lives <= 0)
-                    {
+                    if (lives <= 0) {
                         currentState = GameState::GAME_OVER;
-                    }
-                    else
-                    {
+                    } else {
                         resetPlayerAndBall(); // Reset ball/paddle for next life
                     }
                 }
             }
 
             // Mettre à jour les bonus qui tombent
-            for (auto& bonus : fallingBonuses)
-            {
-                if (bonus.active)
-                {
+            for (auto &bonus: fallingBonuses) {
+                if (bonus.active) {
                     // Faire descendre le bonus
                     bonus.position.y -= bonus.fallSpeed * dt;
 
                     // Vérifier si le bonus a atteint le bas de l'écran
-                    if (bonus.position.y < -gameBoundY)
-                    {
+                    if (bonus.position.y < -gameBoundY) {
                         bonus.active = false;
                         continue;
                     }
 
                     // Vérifier la collision avec la raquette
-                    if (checkBonusPaddleCollision(bonus))
-                    {
+                    if (checkBonusPaddleCollision(bonus)) {
                         applyBonus(bonus);
                         bonus.active = false;
                     }
@@ -731,34 +649,29 @@ private:
             // Nettoyage des bonus inactifs
             fallingBonuses.erase(
                 std::remove_if(fallingBonuses.begin(), fallingBonuses.end(),
-                               [](const FallingBonus& b) { return !b.active; }),
+                               [](const FallingBonus &b) { return !b.active; }),
                 fallingBonuses.end()
             );
 
             // --- Check Win Condition ---
             bool allBlocksInactive = true;
-            for (const auto& block : blocks)
-            {
-                if (block.active && !block.isWall)
-                {
+            for (const auto &block: blocks) {
+                if (block.active && !block.isWall) {
                     allBlocksInactive = false;
                     break;
                 }
             }
-            if (allBlocksInactive)
-            {
+            if (allBlocksInactive) {
                 if (lives > 0) // S'il reste des vies, passer au niveau suivant
                 {
                     currentLevel++;
-                    playerPaddle.firstContactOrange=true;
-                    playerPaddle.firstContactRed=true;
+                    playerPaddle.firstContactOrange = true;
+                    playerPaddle.firstContactRed = true;
                     gameBall.hitCount = 0;
                     initBlocks(); // Générer un nouveau niveau de briques
                     resetPlayerAndBall(); // Réinitialiser la position de la balle et de la raquette
                     // La score est préservé car nous ne le réinitialisons pas
-                }
-                else
-                {
+                } else {
                     currentState = GameState::GAME_OVER;
                 }
             }
@@ -767,30 +680,24 @@ private:
 
     // --- Rendering Functions ---
 
-    void render()
-    {
+    void render() {
         // --- Clear Screen ---
         glClearColor(0.1f, 0.1f, 0.12f, 1.0f); // Dark background
         glClear(GL_COLOR_BUFFER_BIT);
 
         // --- Render Game World Elements (if applicable) ---
-        if (currentState == GameState::PLAYING || currentState == GameState::GAME_OVER)
-        {
+        if (currentState == GameState::PLAYING || currentState == GameState::GAME_OVER) {
             // Bricks
-            for (const auto& block : blocks)
-            {
-                if (block.active)
-                {
+            for (const auto &block: blocks) {
+                if (block.active) {
                     renderGameObject(block);
                 }
             }
 
 
             // Bonus en train de tomber
-            for (const auto& bonus : fallingBonuses)
-            {
-                if (bonus.active)
-                {
+            for (const auto &bonus: fallingBonuses) {
+                if (bonus.active) {
                     renderFallingBonus(bonus);
                 }
             }
@@ -798,8 +705,7 @@ private:
             // Paddle
             renderGameObject(playerPaddle);
             // Ball (render if playing, or if game over but ball wasn't stuck/lost yet)
-            if (currentState == GameState::PLAYING || (lives > 0 && !gameBall.stuckToPaddle))
-            {
+            if (currentState == GameState::PLAYING || (lives > 0 && !gameBall.stuckToPaddle)) {
                 renderGameObject(gameBall);
             }
         }
@@ -816,27 +722,21 @@ private:
     }
 
     // Renders all ImGui elements based on current state
-    void renderUI()
-    {
+    void renderUI() {
         int currentWindowWidth, currentWindowHeight;
         glfwGetWindowSize(window, &currentWindowWidth, &currentWindowHeight);
-        if (currentState == GameState::MENU)
-        {
+        if (currentState == GameState::MENU) {
             renderMenuUI(currentWindowWidth, currentWindowHeight);
-        }
-        else if (currentState == GameState::PLAYING || currentState == GameState::GAME_OVER)
-        {
+        } else if (currentState == GameState::PLAYING || currentState == GameState::GAME_OVER) {
             renderGameUI(currentWindowWidth, currentWindowHeight); // Score, Lives
-            if (currentState == GameState::GAME_OVER)
-            {
+            if (currentState == GameState::GAME_OVER) {
                 renderGameOverUI(currentWindowWidth, currentWindowHeight); // Game Over message
             }
         }
     }
 
     // Renders the main menu using ImGui widgets
-    void renderMenuUI(const int& wW, const int& wH)
-    {
+    void renderMenuUI(const int &wW, const int &wH) {
         // Create a fullscreen, transparent window for button layout
         ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
         ImGui::SetNextWindowSize(ImVec2(wW, wH));
@@ -845,7 +745,7 @@ private:
                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground);
 
         // --- Title ---
-        const char* title = "BREAKOUT";
+        const char *title = "BREAKOUT";
         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
         ImVec2 titleSize = ImGui::CalcTextSize(title);
         ImGui::SetCursorPosX((wW - titleSize.x) / 2.0f);
@@ -862,25 +762,22 @@ private:
 
         // Play Button
         ImGui::SetCursorPos(ImVec2(buttonPosX, buttonPosY_Play));
-        if (ImGui::Button("PLAY", ImVec2(buttonWidth, buttonHeight)))
-        {
+        if (ImGui::Button("PLAY", ImVec2(buttonWidth, buttonHeight))) {
             currentState = GameState::PLAYING;
             initGame();
         }
 
         // Exit Button
         ImGui::SetCursorPos(ImVec2(buttonPosX, buttonPosY_Exit));
-        if (ImGui::Button("EXIT", ImVec2(buttonWidth, buttonHeight)))
-        {
+        if (ImGui::Button("EXIT", ImVec2(buttonWidth, buttonHeight))) {
             glfwSetWindowShouldClose(window, true);
         }
 
         ImGui::End();
     }
 
-    void renderGameUI(const float& wW, const float& wH) const
-    {
-        ImDrawList* drawList = ImGui::GetForegroundDrawList(); // Draw on top of game
+    void renderGameUI(const float &wW, const float &wH) const {
+        ImDrawList *drawList = ImGui::GetForegroundDrawList(); // Draw on top of game
 
         // Score Display (Top-Left)
         std::string scoreText = "SCORE: " + std::to_string(score);
@@ -899,12 +796,11 @@ private:
                           livesText.c_str());
     }
 
-    static void renderGameOverUI(const float& wW, const float& wH)
-    {
-        ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    static void renderGameOverUI(const float &wW, const float &wH) {
+        ImDrawList *drawList = ImGui::GetForegroundDrawList();
 
         // --- "GAME OVER" Text ---
-        const char* gameOverMsg = "GAME OVER";
+        const char *gameOverMsg = "GAME OVER";
         float goFontSize = ImGui::GetFontSize() * 2.0f; // Scale default font size
         ImVec2 goTextSize = ImGui::CalcTextSize(gameOverMsg);
         // Calculate centered position using scaled size
@@ -912,14 +808,13 @@ private:
         drawList->AddText(nullptr, goFontSize, goTextPos, IM_COL32(255, 50, 50, 255), gameOverMsg);
 
         // --- "Press Enter" Text ---
-        const char* restartMsg = "Press ENTER to Return to Menu";
+        const char *restartMsg = "Press ENTER to Return to Menu";
         ImVec2 restartTextSize = ImGui::CalcTextSize(restartMsg);
         ImVec2 restartTextPos = ImVec2((wW - restartTextSize.x) / 2.0f, wH * 0.6f);
         drawList->AddText(restartTextPos, IM_COL32(255, 255, 255, 255), restartMsg);
     }
 
-    static void renderFallingBonus(const FallingBonus& bonus)
-    {
+    static void renderFallingBonus(const FallingBonus &bonus) {
         glColor4f(bonus.color.r, bonus.color.g, bonus.color.b, bonus.color.a);
         glBegin(GL_QUADS);
         glVertex2f(bonus.position.x, bonus.position.y);
@@ -929,8 +824,7 @@ private:
         glEnd();
     }
 
-    static void renderGameObject(const GameObject& obj)
-    {
+    static void renderGameObject(const GameObject &obj) {
         glColor4f(obj.color.r, obj.color.g, obj.color.b, obj.color.a);
         glBegin(GL_QUADS);
         glVertex2f(obj.position.x, obj.position.y);
@@ -940,46 +834,35 @@ private:
         glEnd();
     }
 
-    static bool checkCollision(const GameObject& one, const GameObject& two)
-    {
+    static bool checkCollision(const GameObject &one, const GameObject &two) {
         return one.position.x < two.position.x + two.size.x && one.position.x + one.size.x > two.position.x && one.
-            position.y < two.position.y + two.size.y && one.position.y + one.size.y > two.position.y;
+               position.y < two.position.y + two.size.y && one.position.y + one.size.y > two.position.y;
     }
 
-    void handleCollisions()
-    {
+    void handleCollisions() {
         handleBallWallCollision();
-        if (checkCollision(gameBall, playerPaddle))
-        {
+        if (checkCollision(gameBall, playerPaddle)) {
             resolveBallPaddleCollision();
         }
-        for (auto& block : blocks)
-        {
-            if (block.active && checkCollision(gameBall, block))
-            {
+        for (auto &block: blocks) {
+            if (block.active && checkCollision(gameBall, block)) {
                 resolveBallBlockCollision(block);
                 break;
             }
         }
     }
 
-    void handleBallWallCollision()
-    {
-        if (gameBall.position.x <= -gameBoundX)
-        {
+    void handleBallWallCollision() {
+        if (gameBall.position.x <= -gameBoundX) {
             gameBall.velocity.x = std::abs(gameBall.velocity.x);
             gameBall.position.x = -gameBoundX;
-        }
-        else if (gameBall.position.x + gameBall.size.x >= gameBoundX)
-        {
+        } else if (gameBall.position.x + gameBall.size.x >= gameBoundX) {
             gameBall.velocity.x = -std::abs(gameBall.velocity.x);
             gameBall.position.x = gameBoundX - gameBall.size.x;
         }
-        if (gameBall.position.y + gameBall.size.y >= gameBoundY)
-        {
+        if (gameBall.position.y + gameBall.size.y >= gameBoundY) {
             //Collision avec le plafond
-            if (!playerPaddle.isShrunk)
-            {
+            if (!playerPaddle.isShrunk) {
                 playerPaddle.isShrunk = true;
                 playerPaddle.size.x *= 0.5f;
             }
@@ -988,8 +871,7 @@ private:
         }
     }
 
-    void resolveBallPaddleCollision()
-    {
+    void resolveBallPaddleCollision() {
         if (gameBall.velocity.y >= 0.0f)
             return;
 
@@ -1008,8 +890,7 @@ private:
         // Définir les seuils pour les quarts de la raquette
         const float quarterThreshold = 0.5f;
 
-        if (normalizedOffset <= -quarterThreshold)
-        {
+        if (normalizedOffset <= -quarterThreshold) {
             // Quart gauche : peu de déviation horizontale
             gameBall.velocity.x = normalizedOffset * gameBall.speedMagnitude * 0.2f;
 
@@ -1019,9 +900,7 @@ private:
                 - gameBall.velocity.x * gameBall.velocity.x
             );
             gameBall.velocity.y = vy;
-        }
-        else if (normalizedOffset >= quarterThreshold)
-        {
+        } else if (normalizedOffset >= quarterThreshold) {
             // Quart droit : forte déviation horizontale
             gameBall.velocity.x = normalizedOffset * gameBall.speedMagnitude * 0.8f;
 
@@ -1034,18 +913,13 @@ private:
         }
     }
 
-    void resolveBallBlockCollision(Block& block)
-    {
-        if (block.isWall)
-        {
-            if (block.isReflective)
-            {
+    void resolveBallBlockCollision(Block &block) {
+        if (block.isWall) {
+            if (block.isReflective) {
                 // Mur à rétroréflexion
                 gameBall.velocity.x = -gameBall.velocity.x;
                 gameBall.velocity.y = -gameBall.velocity.y;
-            }
-            else
-            {
+            } else {
                 // Mur normal - rebond standard
                 // Déterminer où la balle a frappé la brique
                 float ballCenterX = gameBall.position.x + gameBall.size.x / 2.0f;
@@ -1058,13 +932,10 @@ private:
                 float diffY = ballCenterY - blockCenterY;
 
                 // Déterminer si la collision est horizontale ou verticale
-                if (std::abs(diffX / block.size.x) > std::abs(diffY / block.size.y))
-                {
+                if (std::abs(diffX / block.size.x) > std::abs(diffY / block.size.y)) {
                     // Collision horizontale
                     gameBall.velocity.x = -gameBall.velocity.x;
-                }
-                else
-                {
+                } else {
                     // Collision verticale
                     gameBall.velocity.y = -gameBall.velocity.y;
                 }
@@ -1084,13 +955,10 @@ private:
         float diffY = ballCenterY - blockCenterY;
 
         // Déterminer si la collision est horizontale ou verticale
-        if (std::abs(diffX / block.size.x) > std::abs(diffY / block.size.y))
-        {
+        if (std::abs(diffX / block.size.x) > std::abs(diffY / block.size.y)) {
             // Collision horizontale
             gameBall.velocity.x = -gameBall.velocity.x;
-        }
-        else
-        {
+        } else {
             // Collision verticale
             gameBall.velocity.y = -gameBall.velocity.y;
         }
@@ -1103,19 +971,15 @@ private:
         block.hitCounter--;
 
         // Si le compteur atteint 0, désactiver la brique
-        if (block.hitCounter <= 0)
-        {
+        if (block.hitCounter <= 0) {
             block.active = false;
             score += block.points;
 
             // Logique pour les briques bonus
-            if (block.isBonus)
-            {
+            if (block.isBonus) {
                 spawnBonus(block);
             }
-        }
-        else
-        {
+        } else {
             block.color = getColorFromEnum(block.colorType);
         }
 
@@ -1124,45 +988,36 @@ private:
         applySpeedIncrease(block);
     }
 
-    void applySpeedIncrease(const Block& b)
-    {
+    void applySpeedIncrease(const Block &b) {
         bool speedIncreased = false;
-        if (gameBall.hitCount == 4 || gameBall.hitCount == 12)
-        {
+        if (gameBall.hitCount == 4 || gameBall.hitCount == 12) {
             gameBall.speedMagnitude *= BALL_SPEED_INCREMENT;
             speedIncreased = true;
         }
 
-        if (playerPaddle.firstContactRed  && b.colorType==BrickColor::RED)
-        {
+        if (playerPaddle.firstContactRed && b.colorType == BrickColor::RED) {
             gameBall.speedMagnitude *= BALL_SPEED_INCREMENT;
             playerPaddle.firstContactRed = false;
             speedIncreased = true;
         }
 
-        if (playerPaddle.firstContactOrange && BrickColor::ORANGE == b.colorType)
-        {
+        if (playerPaddle.firstContactOrange && BrickColor::ORANGE == b.colorType) {
             gameBall.speedMagnitude *= BALL_SPEED_INCREMENT;
             playerPaddle.firstContactOrange = false;
             speedIncreased = true;
         }
-        if (speedIncreased)
-        {
+        if (speedIncreased) {
             normalizeVelocity();
         }
     }
 
-    void normalizeVelocity()
-    {
+    void normalizeVelocity() {
         float currentSpeed = std::sqrt(
             gameBall.velocity.x * gameBall.velocity.x + gameBall.velocity.y * gameBall.velocity.y);
-        if (currentSpeed > 0.0001f)
-        {
+        if (currentSpeed > 0.0001f) {
             gameBall.velocity.x = (gameBall.velocity.x / currentSpeed) * gameBall.speedMagnitude;
             gameBall.velocity.y = (gameBall.velocity.y / currentSpeed) * gameBall.speedMagnitude;
-        }
-        else if (!gameBall.stuckToPaddle)
-        {
+        } else if (!gameBall.stuckToPaddle) {
             gameBall.velocity = Vec2{0.0f, gameBall.speedMagnitude};
         }
     }
@@ -1170,49 +1025,41 @@ private:
     // --- GLFW Callbacks ---
 
     // Handles window resize events - updates viewport and projection matrix
-    static void framebufferSizeCallback(GLFWwindow* window, int width, int height)
-    {
-        auto gameInstance = static_cast<Game*>(glfwGetWindowUserPointer(window));
-        if (gameInstance)
-        {
+    static void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
+        auto gameInstance = static_cast<Game *>(glfwGetWindowUserPointer(window));
+        if (gameInstance) {
             gameInstance->updateProjectionMatrix(width, height);
         }
     }
 
-    static void windowSizeCallback(GLFWwindow* window, int width, int height)
-    {
-        auto gameInstance = static_cast<Game*>(glfwGetWindowUserPointer(window));
-        if (gameInstance)
-        {
+    static void windowSizeCallback(GLFWwindow *window, int width, int height) {
+        auto gameInstance = static_cast<Game *>(glfwGetWindowUserPointer(window));
+        if (gameInstance) {
             gameInstance->updateProjectionMatrix(width, height);
         }
     }
 
-    // Updates viewport and projection matrix based on window size
-    void updateProjectionMatrix(int width, int height)
-    {
+    // Mise à jour du viewport et de la matrice de projection en fonction de la résolution de la fenêtre.
+    void updateProjectionMatrix(int width, int height) {
         if (height == 0)
-            height = 1; // Prevent division by zero
+            height = 1; //Controle de sécurité sur les divisions par 0.
         windowWidth = width;
         windowHeight = height;
 
         float oldBoundX = gameBoundX;
         float oldBoundY = gameBoundY;
 
-        // Update orthographic projection based on aspect ratio
+        // Mise a jour de la matrice de projection
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         const float aspect = static_cast<float>(width) / static_cast<float>(height);
 
-        if (width >= height)
-        {
+        if (width >= height) {
             // Wider than tall
             gameBoundX = aspect;
             gameBoundY = 1.0f;
             glOrtho(-aspect, aspect, -1.0f, 1.0f, -1.0f, 1.0f);
-        }
-        else
-        {
+        } else {
             // Taller than wide
             gameBoundX = 1.0f;
             gameBoundY = 1.0f / aspect;
@@ -1220,17 +1067,15 @@ private:
         }
 
         // Ajuster la vitesse en fonction du changement des dimensions du monde
-        if (currentState == GameState::PLAYING && !gameBall.stuckToPaddle)
-        {
+        if (currentState == GameState::PLAYING && !gameBall.stuckToPaddle) {
             // Calculer le facteur d'échelle pour la vitesse
             float speedScaleFactor = (gameBoundX / oldBoundX + gameBoundY / oldBoundY) / 2.0f;
 
             // Appliquer ce facteur à la vitesse actuelle de la balle
             float currentSpeed = std::sqrt(gameBall.velocity.x * gameBall.velocity.x +
-                gameBall.velocity.y * gameBall.velocity.y);
+                                           gameBall.velocity.y * gameBall.velocity.y);
 
-            if (currentSpeed > 0.0001f)
-            {
+            if (currentSpeed > 0.0001f) {
                 // Maintenir la direction, mais ajuster la magnitude
                 gameBall.velocity.x *= speedScaleFactor;
                 gameBall.velocity.y *= speedScaleFactor;
@@ -1253,22 +1098,17 @@ private:
 //-----------------------------------------------------------------------------
 // Main Function
 //-----------------------------------------------------------------------------
-int main()
-{
-    try
-    {
+int main() {
+    try {
         Game breakoutGame(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
         breakoutGame.run();
-    }
-    catch (const std::exception& e)
-    {
+    } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
         // Ensure termination even if constructor fails partially
         glfwTerminate();
         return EXIT_FAILURE;
     }
-    catch (...)
-    {
+    catch (...) {
         std::cerr << "An unknown error occurred." << std::endl;
         glfwTerminate();
         return EXIT_FAILURE;
